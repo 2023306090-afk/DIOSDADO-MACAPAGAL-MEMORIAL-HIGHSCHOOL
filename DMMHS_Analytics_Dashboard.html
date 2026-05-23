@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DMMHS — School Performance Analytics Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --navy: #1b3a5c; --navy-light: #2c5282; --bg: #eef2f7; --card: #fff;
+      --text: #1a202c; --muted: #64748b; --border: #e2e8f0;
+      --desc: #2563eb; --diag: #d97706; --pred: #7c3aed; --pres: #059669;
+      --green: #27ae60; --red: #c0392b; --orange: #e67e22;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.55; }
+    .header {
+      background: linear-gradient(135deg, var(--navy), var(--navy-light));
+      color: #fff; padding: 1.4rem 2rem;
+    }
+    .header h1 { font-size: 1.45rem; font-weight: 700; }
+    .header .sub { font-size: 0.88rem; opacity: 0.92; margin-top: 0.35rem; max-width: 820px; }
+    .framework-bar {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;
+    }
+    .fw-pill {
+      font-size: 0.72rem; font-weight: 700; padding: 0.35rem 0.75rem;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .fw-desc { background: rgba(37,99,235,0.25); border: 1px solid #93c5fd; }
+    .fw-diag { background: rgba(217,119,6,0.25); border: 1px solid #fcd34d; }
+    .fw-pred { background: rgba(124,58,237,0.25); border: 1px solid #c4b5fd; }
+    .fw-pres { background: rgba(5,150,105,0.25); border: 1px solid #6ee7b7; }
+    .filter-bar {
+      background: var(--card); border-bottom: 2px solid var(--border);
+      padding: 0.85rem 2rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;
+      position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .filter-group { display: flex; align-items: center; gap: 0.5rem; }
+    .filter-group label { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+    .filter-group select, .filter-group input[type=range] {
+      padding: 0.45rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem;
+    }
+    .btn {
+      padding: 0.5rem 1rem; border: none; border-radius: 8px; cursor: pointer;
+      font-size: 0.85rem; font-weight: 600; background: var(--navy); color: #fff;
+    }
+    .nav-tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 1rem 2rem 0; max-width: 1500px; margin: 0 auto; }
+    .nav-tab {
+      padding: 0.55rem 1rem; border: 1px solid var(--border); background: var(--card);
+      border-radius: 8px 8px 0 0; cursor: pointer; font-size: 0.8rem; font-weight: 600; color: var(--muted);
+    }
+    .nav-tab.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .nav-tab[data-type="desc"].active { background: var(--desc); border-color: var(--desc); }
+    .nav-tab[data-type="diag"].active { background: var(--diag); border-color: var(--diag); }
+    .nav-tab[data-type="pred"].active { background: var(--pred); border-color: var(--pred); }
+    .nav-tab[data-type="pres"].active { background: var(--pres); border-color: var(--pres); }
+    .container { max-width: 1500px; margin: 0 auto; padding: 1rem 2rem 2.5rem; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .section-banner {
+      border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1rem; color: #fff;
+    }
+    .section-banner h2 { font-size: 1.15rem; margin-bottom: 0.35rem; }
+    .section-banner p { font-size: 0.85rem; opacity: 0.95; }
+    .banner-desc { background: linear-gradient(135deg, #1d4ed8, #3b82f6); }
+    .banner-diag { background: linear-gradient(135deg, #b45309, #f59e0b); }
+    .banner-pred { background: linear-gradient(135deg, #6d28d9, #8b5cf6); }
+    .banner-pres { background: linear-gradient(135deg, #047857, #10b981); }
+    .banner-overview { background: linear-gradient(135deg, var(--navy), var(--navy-light)); }
+    .kpi-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 0.75rem; margin-bottom: 1rem;
+    }
+    .kpi {
+      background: var(--card); border-radius: 10px; padding: 1rem;
+      border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .kpi .label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; font-weight: 600; }
+    .kpi .value { font-size: 1.5rem; font-weight: 800; color: var(--navy); margin: 0.2rem 0; }
+    .kpi .sub { font-size: 0.72rem; color: var(--muted); }
+    .chart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem; }
+    @media (max-width: 1000px) { .chart-grid { grid-template-columns: 1fr; } }
+    .chart-card {
+      background: var(--card); border-radius: 10px; padding: 1rem 1.15rem;
+      border: 1px solid var(--border);
+    }
+    .chart-card.full { grid-column: 1 / -1; }
+    .chart-card h4 { font-size: 0.88rem; color: var(--navy); margin-bottom: 0.65rem; font-weight: 700; }
+    .chart-box { position: relative; height: 280px; }
+    .chart-box.lg { height: 320px; }
+    .insight-card {
+      background: var(--card); border-radius: 10px; padding: 1rem 1.15rem;
+      border: 1px solid var(--border); margin-bottom: 0.75rem;
+      border-left: 4px solid var(--navy);
+    }
+    .insight-card.desc { border-left-color: var(--desc); }
+    .insight-card.diag { border-left-color: var(--diag); }
+    .insight-card.pred { border-left-color: var(--pred); }
+    .insight-card.pres { border-left-color: var(--pres); }
+    .insight-card h5 { font-size: 0.92rem; color: var(--navy); margin-bottom: 0.4rem; }
+    .insight-card p { font-size: 0.82rem; color: #334155; }
+    .tag {
+      display: inline-block; font-size: 0.65rem; padding: 0.12rem 0.45rem;
+      border-radius: 4px; font-weight: 700; margin-right: 0.35rem;
+    }
+    .tag-desc { background: #dbeafe; color: #1e40af; }
+    .tag-diag { background: #fef3c7; color: #92400e; }
+    .tag-pred { background: #ede9fe; color: #5b21b6; }
+    .tag-pres { background: #d1fae5; color: #065f46; }
+    .ladder {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.25rem;
+    }
+    @media (max-width: 900px) { .ladder { grid-template-columns: 1fr 1fr; } }
+    .ladder-step {
+      background: var(--card); border-radius: 10px; padding: 1rem; border: 1px solid var(--border);
+      cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .ladder-step:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .ladder-step h3 { font-size: 0.85rem; margin-bottom: 0.35rem; }
+    .ladder-step .q { font-size: 0.75rem; color: var(--muted); font-style: italic; margin-bottom: 0.5rem; }
+    .ladder-step ul { font-size: 0.78rem; margin-left: 1rem; color: #334155; }
+    .ladder-step.step-desc h3 { color: var(--desc); }
+    .ladder-step.step-diag h3 { color: var(--diag); }
+    .ladder-step.step-pred h3 { color: var(--pred); }
+    .ladder-step.step-pres h3 { color: var(--pres); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    th, td { padding: 0.5rem 0.6rem; text-align: left; border: 1px solid var(--border); }
+    th { background: var(--navy); color: #fff; font-weight: 600; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .table-wrap { overflow-x: auto; background: var(--card); border-radius: 10px; padding: 0.75rem; border: 1px solid var(--border); margin-bottom: 1rem; }
+    .matrix { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 800px) { .matrix { grid-template-columns: 1fr; } }
+    .matrix-quad {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 0.85rem; min-height: 120px;
+    }
+    .matrix-quad h5 { font-size: 0.8rem; margin-bottom: 0.5rem; }
+    .matrix-quad ul { font-size: 0.78rem; margin-left: 1.1rem; color: #334155; }
+    .risk-high { background: #fadbd8 !important; font-weight: 600; }
+    .risk-med { background: #fdebd0 !important; }
+    .risk-low { background: #d5f5e3 !important; }
+    .scenario-panel {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1rem 1.25rem; margin-bottom: 1rem;
+    }
+    .scenario-panel label { font-size: 0.82rem; font-weight: 600; }
+    .scenario-val { font-size: 1.1rem; font-weight: 800; color: var(--pred); margin-left: 0.5rem; }
+    .footer { text-align: center; font-size: 0.75rem; color: var(--muted); margin-top: 2rem; padding: 1rem; border-top: 1px solid var(--border); }
+    @media print { .filter-bar, .nav-tabs, .btn { display: none !important; } .section { display: block !important; } }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <h1>Diosdado Macapagal Memorial Highschool — Performance Analytics</h1>
+  <p class="sub">School Performance Dashboard for Descriptive, Diagnostic, Predictive &amp; Prescriptive Analysis | SY 2021–2022 to SY 2025–2026</p>
+  <div class="framework-bar">
+    <span class="fw-pill fw-desc">1. Descriptive — What happened?</span>
+    <span class="fw-pill fw-diag">2. Diagnostic — Why did it happen?</span>
+    <span class="fw-pill fw-pred">3. Predictive — What may happen?</span>
+    <span class="fw-pill fw-pres">4. Prescriptive — What should we do?</span>
+  </div>
+</header>
+
+<div class="filter-bar">
+  <div class="filter-group">
+    <label>School Year</label>
+    <select id="fSY"></select>
+  </div>
+  <div class="filter-group">
+    <label>Grade</label>
+    <select id="fGrade">
+      <option value="all">All Grades</option>
+      <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+      <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Program</label>
+    <select id="fProgram">
+      <option value="all">All</option>
+      <option value="jhs">JHS (7–10)</option>
+      <option value="shs">SHS (11–12)</option>
+    </select>
+  </div>
+  <button class="btn" onclick="window.print()">Print Report</button>
+  <button class="btn" style="background:#059669" onclick="resetFilters()">Reset</button>
+  <span id="genDate" style="font-size:0.78rem;color:var(--muted);margin-left:auto"></span>
+</div>
+
+<nav class="nav-tabs" id="navTabs"></nav>
+<div class="container">
+
+  <!-- OVERVIEW -->
+  <section id="sec-overview" class="section active">
+    <div class="section-banner banner-overview">
+      <h2>Analytics Overview</h2>
+      <p>Use this dashboard as a decision-support system: move from facts → causes → forecasts → actions.</p>
+    </div>
+    <div class="ladder" id="analyticsLadder"></div>
+    <div class="kpi-grid" id="kpiOverview"></div>
+    <div class="chart-grid">
+      <div class="chart-card full">
+        <h4>Analytics Pipeline — Key Metrics Across School Years</h4>
+        <div class="chart-box lg"><canvas id="c_pipeline"></canvas></div>
+      </div>
+    </div>
+    <div id="overviewNarrative"></div>
+  </section>
+
+  <!-- DESCRIPTIVE -->
+  <section id="sec-descriptive" class="section">
+    <div class="section-banner banner-desc">
+      <h2>Descriptive Analytics</h2>
+      <p>Summarize historical performance: enrollment, retention, attrition, resources, and SHS strands.</p>
+    </div>
+    <div class="kpi-grid" id="kpiDesc"></div>
+    <div class="chart-grid">
+      <div class="chart-card full">
+        <h4>Total Enrollment (BOSY) — 5-Year History</h4>
+        <div class="chart-box"><canvas id="c_descEnroll"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>Grade-Level Distribution (Selected SY)</h4>
+        <div class="chart-box"><canvas id="c_descGrade"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>Retention vs Dropout vs Repeater Rates</h4>
+        <div class="chart-box"><canvas id="c_descRates"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>JHS vs SHS Split</h4>
+        <div class="chart-box"><canvas id="c_descJhsShs"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>SHS Strand Mix</h4>
+        <div class="chart-box"><canvas id="c_descStrand"></canvas></div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <h4 style="margin-bottom:0.5rem;color:var(--navy)">Descriptive Summary Table</h4>
+      <table id="tblDesc"></table>
+    </div>
+    <div id="descInsights"></div>
+  </section>
+
+  <!-- DIAGNOSTIC -->
+  <section id="sec-diagnostic" class="section">
+    <div class="section-banner banner-diag">
+      <h2>Diagnostic Analytics</h2>
+      <p>Identify root causes, drivers, and patterns — compare grades, periods, and resource constraints.</p>
+    </div>
+    <div class="kpi-grid" id="kpiDiag"></div>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h4>Dropout Pareto by Grade (Share of Total Dropouts)</h4>
+        <div class="chart-box"><canvas id="c_diagPareto"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>Grades 9–10 vs Rest of School (Enrollment Decline Driver)</h4>
+        <div class="chart-box"><canvas id="c_diagG910"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>Core Teacher Count vs Student–Teacher Ratio</h4>
+        <div class="chart-box"><canvas id="c_diagTeachers"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>Classroom Utilization vs Dropout Rate by Grade</h4>
+        <div class="chart-box"><canvas id="c_diagUtilDrop"></canvas></div>
+      </div>
+      <div class="chart-card full">
+        <h4>Year-over-Year Change by Grade (Diagnostic Heat)</h4>
+        <div class="table-wrap" style="border:none;padding:0"><table id="tblDiagHeat"></table></div>
+      </div>
+    </div>
+    <div id="diagFindings"></div>
+  </section>
+
+  <!-- PREDICTIVE -->
+  <section id="sec-predictive" class="section">
+    <div class="section-banner banner-pred">
+      <h2>Predictive Analytics</h2>
+      <p>Forecast enrollment and attrition using trend models; simulate intervention impact.</p>
+    </div>
+    <div class="scenario-panel">
+      <label>Intervention scenario — improve retention / reduce attrition by:</label>
+      <input type="range" id="fIntervention" min="0" max="30" value="10" step="1" style="width:200px;vertical-align:middle" />
+      <span class="scenario-val" id="interventionLabel">10%</span>
+      <p style="font-size:0.78rem;color:var(--muted);margin-top:0.5rem">Adjust slider to model prescriptive impact on next-year forecasts (illustrative model).</p>
+    </div>
+    <div class="kpi-grid" id="kpiPred"></div>
+    <div class="chart-grid">
+      <div class="chart-card full">
+        <h4>Enrollment Forecast — Baseline vs Intervention (Linear Trend + Scenario)</h4>
+        <div class="chart-box lg"><canvas id="c_predEnroll"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>Projected Dropout Rate (Next 2 SY)</h4>
+        <div class="chart-box"><canvas id="c_predDrop"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>Grades 9–10 Enrollment Forecast</h4>
+        <div class="chart-box"><canvas id="c_predG910"></canvas></div>
+      </div>
+      <div class="chart-card full">
+        <h4>Risk Score by Grade (Next SY — Composite Index)</h4>
+        <div class="table-wrap" style="border:none;padding:0"><table id="tblRisk"></table></div>
+      </div>
+    </div>
+    <div id="predInsights"></div>
+  </section>
+
+  <!-- PRESCRIPTIVE -->
+  <section id="sec-prescriptive" class="section">
+    <div class="section-banner banner-pres">
+      <h2>Prescriptive Analytics</h2>
+      <p>Recommended actions prioritized by evidence, impact, and feasibility — linked to diagnostic &amp; predictive findings.</p>
+    </div>
+    <div class="matrix">
+      <div class="matrix-quad" style="border-top:3px solid var(--pres)">
+        <h5>High Impact · Quick Wins</h5>
+        <ul id="quadQuick"></ul>
+      </div>
+      <div class="matrix-quad" style="border-top:3px solid var(--diag)">
+        <h5>High Impact · Strategic</h5>
+        <ul id="quadStrategic"></ul>
+      </div>
+      <div class="matrix-quad" style="border-top:3px solid var(--desc)">
+        <h5>Monitor · Lower Urgency</h5>
+        <ul id="quadMonitor"></ul>
+      </div>
+      <div class="matrix-quad" style="border-top:3px solid var(--pred)">
+        <h5>Preventive · Based on Forecast</h5>
+        <ul id="quadPrevent"></ul>
+      </div>
+    </div>
+    <div id="presActions"></div>
+    <div class="chart-grid">
+      <div class="chart-card full">
+        <h4>Action Priority vs Expected Impact (Prescriptive Matrix)</h4>
+        <div class="chart-box"><canvas id="c_presMatrix"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXPLORER -->
+  <section id="sec-explorer" class="section">
+    <div class="section-banner banner-overview">
+      <h2>Data Explorer</h2>
+      <p>Raw master data for verification and export to Power BI / Google Sheets.</p>
+    </div>
+    <div class="table-wrap"><table id="tblMaster"></table></div>
+    <div class="table-wrap"><table id="tblTeachers"></table></div>
+  </section>
+
+</div>
+
+<footer class="footer">
+  DMMHS | Predictive models use linear regression on 5-year trends — illustrative for planning, not official DepEd projections.<br>
+  Promotion Rate = estimated (100% − Dropout% − Repeater%) | Risk index weights: dropout trend, repeater trend, enrollment decline
+</footer>
+
+<script>
+const SY = ["SY 2021-2022","SY 2022-2023","SY 2023-2024","SY 2024-2025","SY 2025-2026"];
+const SY_FUTURE = ["SY 2026-2027","SY 2027-2028"];
+const GR = [7,8,9,10,11,12];
+const master = [
+  {sy:"SY 2021-2022",g:7,b:475,r:5,d:33,c:11},{sy:"SY 2021-2022",g:8,b:465,r:9,d:14,c:12},{sy:"SY 2021-2022",g:9,b:548,r:15,d:28,c:13},{sy:"SY 2021-2022",g:10,b:558,r:5,d:17,c:12},{sy:"SY 2021-2022",g:11,b:445,r:3,d:4,c:9},{sy:"SY 2021-2022",g:12,b:340,r:0,d:0,c:9},
+  {sy:"SY 2022-2023",g:7,b:422,r:4,d:20,c:11},{sy:"SY 2022-2023",g:8,b:424,r:53,d:12,c:10},{sy:"SY 2022-2023",g:9,b:508,r:15,d:26,c:11},{sy:"SY 2022-2023",g:10,b:482,r:2,d:0,c:11},{sy:"SY 2022-2023",g:11,b:465,r:7,d:23,c:12},{sy:"SY 2022-2023",g:12,b:342,r:2,d:0,c:9},
+  {sy:"SY 2023-2024",g:7,b:313,r:5,d:15,c:10},{sy:"SY 2023-2024",g:8,b:335,r:16,d:14,c:10},{sy:"SY 2023-2024",g:9,b:392,r:12,d:16,c:11},{sy:"SY 2023-2024",g:10,b:413,r:11,d:16,c:11},{sy:"SY 2023-2024",g:11,b:340,r:43,d:7,c:9},{sy:"SY 2023-2024",g:12,b:413,r:0,d:10,c:12},
+  {sy:"SY 2024-2025",g:7,b:402,r:12,d:16,c:11},{sy:"SY 2024-2025",g:8,b:318,r:11,d:17,c:9},{sy:"SY 2024-2025",g:9,b:305,r:3,d:22,c:10},{sy:"SY 2024-2025",g:10,b:367,r:2,d:11,c:10},{sy:"SY 2024-2025",g:11,b:368,r:0,d:5,c:11},{sy:"SY 2024-2025",g:12,b:340,r:0,d:0,c:9},
+  {sy:"SY 2025-2026",g:7,b:432,r:14,d:9,c:11},{sy:"SY 2025-2026",g:8,b:380,r:9,d:10,c:10},{sy:"SY 2025-2026",g:9,b:300,r:18,d:31,c:9},{sy:"SY 2025-2026",g:10,b:294,r:8,d:9,c:8},{sy:"SY 2025-2026",g:11,b:323,r:0,d:14,c:14},{sy:"SY 2025-2026",g:12,b:338,r:0,d:2,c:8}
+];
+const teachers = {
+  "SY 2021-2022":{ENGLISH:8,MATH:8,FILIPINO:8},
+  "SY 2022-2023":{ENGLISH:8,MATH:8,FILIPINO:8},
+  "SY 2023-2024":{ENGLISH:7,MATH:8,FILIPINO:8},
+  "SY 2024-2025":{ENGLISH:7,MATH:6,FILIPINO:6},
+  "SY 2025-2026":{ENGLISH:6,MATH:6,FILIPINO:6}
+};
+const strands = {
+  "SY 2021-2022":{11:{STEM:56,ABM:49,GAS:147,HUMSS:0,"ICT/CSS":77,EIM:18,HBC:15},12:{STEM:53,ABM:50,GAS:81,HUMSS:0,"ICT/CSS":67,EIM:35,HBC:15}},
+  "SY 2022-2023":{11:{STEM:35,ABM:78,GAS:127,HUMSS:0,"ICT/CSS":120,EIM:43,HBC:26},12:{STEM:56,ABM:48,GAS:134,HUMSS:0,"ICT/CSS":44,EIM:24,HBC:9}},
+  "SY 2023-2024":{11:{STEM:64,ABM:46,GAS:0,HUMSS:89,"ICT/CSS":108,EIM:54,HBC:19},12:{STEM:38,ABM:80,GAS:122,HUMSS:0,"ICT/CSS":112,EIM:65,HBC:25}},
+  "SY 2024-2025":{11:{STEM:71,ABM:56,GAS:0,HUMSS:103,"ICT/CSS":69,EIM:33,HBC:14},12:{STEM:64,ABM:45,GAS:0,HUMSS:97,"ICT/CSS":65,EIM:48,HBC:11}},
+  "SY 2025-2026":{11:{STEM:69,ABM:42,GAS:0,HUMSS:102,"ICT/CSS":65,EIM:31,HBC:14},12:{STEM:70,ABM:52,GAS:0,HUMSS:103,"ICT/CSS":67,EIM:33,HBC:14}}
+};
+
+const TABS = [
+  {id:"overview", label:"Overview", type:""},
+  {id:"descriptive", label:"1. Descriptive", type:"desc"},
+  {id:"diagnostic", label:"2. Diagnostic", type:"diag"},
+  {id:"predictive", label:"3. Predictive", type:"pred"},
+  {id:"prescriptive", label:"4. Prescriptive", type:"pres"},
+  {id:"explorer", label:"Data Explorer", type:""}
+];
+
+let selSY = "SY 2025-2026", selGrade = "all", selProgram = "all", interventionPct = 10;
+const charts = {};
+
+const sum = (arr, k) => arr.reduce((a,x) => a + (k ? x[k] : x), 0);
+const pct = (n,d) => d ? (n/d)*100 : 0;
+const fmt = (n,d=0) => Number(n).toLocaleString(undefined,{maximumFractionDigits:d});
+const fmtP = n => n.toFixed(2)+"%";
+const prior = sy => { const i = SY.indexOf(sy); return i>0 ? SY[i-1] : null; };
+const rowsSY = sy => master.filter(x => x.sy === sy);
+
+function metrics(sy) {
+  const r = rowsSY(sy);
+  const t = sum(r,"b"), dr = sum(r,"d"), rr = sum(r,"r"), rm = sum(r,"c");
+  const g910 = r.filter(x=>x.g===9||x.g===10).reduce((a,x)=>a+x.b,0);
+  const jhs = r.filter(x=>x.g<=10).reduce((a,x)=>a+x.b,0);
+  const te = teachers[sy];
+  const prevSy = prior(sy), pt = prevSy ? sum(rowsSY(prevSy),"b") : null;
+  return {
+    t, dr, rr, rm, g910, jhs,
+    dropR: pct(dr,t), repR: pct(rr,t), retR: 100-pct(dr,t),
+    promR: 100-pct(dr,t)-pct(rr,t),
+    growth: pt!=null ? pct(t-pt,pt) : null,
+    classU: pct(t, rm*40), seatU: pct(t, rm*45),
+    ratioEn: Math.round(jhs/te.ENGLISH)
+  };
+}
+
+function linearRegression(ys) {
+  const xs = ys.map((_,i)=>i);
+  const n = xs.length;
+  const sx = sum(xs), sy = sum(ys), sxy = xs.reduce((a,x,i)=>a+x*ys[i],0), sx2 = xs.reduce((a,x)=>a+x*x,0);
+  const denom = n*sx2 - sx*sx;
+  if (!denom) return { slope: 0, intercept: ys[ys.length-1]||0 };
+  const slope = (n*sxy - sx*sy) / denom;
+  const intercept = (sy - slope*sx) / n;
+  return { slope, intercept };
+}
+
+function forecast(ys, steps) {
+  const { slope, intercept } = linearRegression(ys);
+  const start = ys.length;
+  return Array.from({length:steps}, (_,i) => Math.max(0, Math.round(intercept + slope*(start+i))));
+}
+
+function strandTotals(sy) {
+  const s = strands[sy] || strands["SY 2025-2026"];
+  const o = {};
+  [11,12].forEach(g => Object.entries(s[g]).forEach(([k,v]) => o[k]=(o[k]||0)+v));
+  return o;
+}
+
+function gradeRiskScore(g) {
+  const series = SY.map(sy => {
+    const x = master.find(m=>m.sy===sy&&m.g===g);
+    return { b:x.b, d:x.d, r:x.r, dropR:pct(x.d,x.b), repR:pct(x.r,x.b) };
+  });
+  const enrollTrend = linearRegression(series.map(s=>s.b)).slope;
+  const dropTrend = linearRegression(series.map(s=>s.dropR)).slope;
+  const last = series[series.length-1];
+  const score = Math.min(100, Math.max(0,
+    (last.dropR * 2) + (last.repR * 1.5) + (enrollTrend < 0 ? Math.abs(enrollTrend)/5 : 0) + (dropTrend > 0 ? dropTrend * 3 : 0)
+  ));
+  return { score: Math.round(score), enrollTrend, dropTrend, last };
+}
+
+function destroy(id) { if(charts[id]){charts[id].destroy();delete charts[id];} }
+function chartOpts(legend=true) {
+  return { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:legend}} };
+}
+
+function insightCard(type, title, body, evidence) {
+  return `<div class="insight-card ${type}">
+    <h5><span class="tag tag-${type}">${type.toUpperCase()}</span>${title}</h5>
+    <p>${body}</p>${evidence?`<p style="margin-top:0.35rem;font-size:0.78rem;color:var(--muted)"><strong>Evidence:</strong> ${evidence}</p>`:""}
+  </div>`;
+}
+
+function kpi(label, val, sub) {
+  return `<div class="kpi"><div class="label">${label}</div><div class="value">${val}</div>${sub?`<div class="sub">${sub}</div>`:""}</div>`;
+}
+
+/* ========== OVERVIEW ========== */
+function renderOverview() {
+  const m = metrics(selSY), f = metrics("SY 2021-2022"), l = metrics("SY 2025-2026");
+  const enrollSeries = SY.map(s=>sum(rowsSY(s),"b"));
+  const fc = forecast(enrollSeries, 2);
+
+  document.getElementById("analyticsLadder").innerHTML = `
+    <div class="ladder-step step-desc" data-goto="descriptive">
+      <h3>Descriptive</h3><div class="q">What happened?</div>
+      <ul><li>Enrollment: ${fmt(f.t)} → ${fmt(l.t)}</li><li>Dropout rate: ${fmtP(l.dropR)}</li><li>G9–10: ${fmt(l.g910)} learners</li></ul>
+    </div>
+    <div class="ladder-step step-diag" data-goto="diagnostic">
+      <h3>Diagnostic</h3><div class="q">Why did it happen?</div>
+      <ul><li>G9 drives dropout share</li><li>Core teachers ↓ 8→6</li><li>G9–10 enrollment −46%</li></ul>
+    </div>
+    <div class="ladder-step step-pred" data-goto="predictive">
+      <h3>Predictive</h3><div class="q">What may happen?</div>
+      <ul><li>Forecast SY26–27: ~${fmt(fc[0])}</li><li>G9–10 risk: High</li><li>Dropout trend: elevated</li></ul>
+    </div>
+    <div class="ladder-step step-pres" data-goto="prescriptive">
+      <h3>Prescriptive</h3><div class="q">What should we do?</div>
+      <ul><li>G9–10 retention program</li><li>Early Warning System</li><li>SDO teacher request</li></ul>
+    </div>`;
+
+  document.querySelectorAll(".ladder-step").forEach(el => {
+    el.addEventListener("click", () => {
+      const id = el.dataset.goto;
+      document.querySelectorAll(".nav-tab").forEach((b,i) => {
+        b.classList.toggle("active", TABS[i].id === id);
+      });
+      document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+      document.getElementById("sec-"+id).classList.add("active");
+    });
+  });
+
+  document.getElementById("kpiOverview").innerHTML = [
+    kpi("Current Enrollment", fmt(m.t), selSY),
+    kpi("5-Year Change", fmtP(pct(l.t-f.t,f.t)), "Descriptive"),
+    kpi("Retention Rate", fmtP(m.retR), "Descriptive"),
+    kpi("Top Risk Grade", "Grade "+GR.reduce((best,g)=>gradeRiskScore(g).score>gradeRiskScore(best).score?g:best,9), "Predictive"),
+    kpi("Forecast SY 2026–27", fmt(fc[0]), "Baseline trend"),
+    kpi("Priority Actions", "8", "Prescriptive")
+  ].join("");
+
+  document.getElementById("overviewNarrative").innerHTML = [
+    insightCard("desc","School-wide snapshot",
+      `Total BOSY is ${fmt(m.t)} in ${selSY}. Enrollment changed ${fmtP(pct(l.t-f.t,f.t))} from SY 2021–2022 to present.`,
+      `Peak ${fmt(f.t)} → latest ${fmt(l.t)}`),
+    insightCard("diag","Primary drivers identified",
+      `Grades 9–10 account for ${fmtP(pct(m.g910,m.t))} of enrollment but carry the highest dropout concentration. English teachers fell from 8 to 6 while JHS ratio reached ${m.ratioEn}:1.`,
+      "Registrar attrition + staffing records"),
+    insightCard("pred","Forward-looking outlook",
+      `Linear model projects total enrollment of ~${fmt(fc[0])} (SY 2026–2027) and ~${fmt(fc[1])} (SY 2027–2028) if current trends continue.`,
+      "5-point linear regression"),
+    insightCard("pres","Recommended response",
+      "Launch Grades 9–10 Retention Program, deploy Early Warning System at Weeks 4 & 12, and submit evidence-based SDO staffing request.",
+      "Linked to diagnostic findings")
+  ].join("");
+
+  destroy("c_pipeline");
+  charts.c_pipeline = new Chart(document.getElementById("c_pipeline"), {
+    type: "line",
+    data: {
+      labels: [...SY.map(s=>s.replace("SY ","")), ...SY_FUTURE.map(s=>s.replace("SY ",""))],
+      datasets: [
+        { label: "Enrollment (Actual)", data: [...enrollSeries, null, null], borderColor: "#2563eb", tension: 0.3, pointRadius: 5 },
+        { label: "Enrollment (Forecast)", data: [...Array(4).fill(null), enrollSeries[4], ...fc], borderColor: "#7c3aed", borderDash: [6,4], tension: 0.3, pointRadius: 5 },
+        { label: "Dropout Rate %", data: [...SY.map(s=>metrics(s).dropR), ...forecast(SY.map(s=>metrics(s).dropR),2)], borderColor: "#c0392b", yAxisID: "y1", tension: 0.3 },
+        { label: "Retention Rate %", data: SY.map(s=>metrics(s).retR), borderColor: "#059669", yAxisID: "y1", tension: 0.3 }
+      ]
+    },
+    options: {
+      ...chartOpts(),
+      scales: {
+        y: { position: "left", title: { display: true, text: "Enrollment" } },
+        y1: { position: "right", min: 0, max: 100, grid: { drawOnChartArea: false }, title: { display: true, text: "Rate %" } }
+      }
+    }
+  });
+}
+
+/* ========== DESCRIPTIVE ========== */
+function renderDescriptive() {
+  const m = metrics(selSY), rows = rowsSY(selSY);
+  const f = metrics("SY 2021-2022"), l = metrics("SY 2025-2026");
+
+  document.getElementById("kpiDesc").innerHTML = [
+    kpi("Total BOSY", fmt(m.t), m.growth!=null?(m.growth>=0?"▲":"▼")+" "+fmtP(Math.abs(m.growth)):""),
+    kpi("JHS Enrollment", fmt(m.jhs), fmtP(pct(m.jhs,m.t))),
+    kpi("SHS Enrollment", fmt(m.t-m.jhs), fmtP(pct(m.t-m.jhs,m.t))),
+    kpi("Dropout Cases", fmt(m.dr), fmtP(m.dropR)),
+    kpi("Repeater Cases", fmt(m.rr), fmtP(m.repR)),
+    kpi("Retention Rate", fmtP(m.retR), ""),
+    kpi("Promotion (est.)", fmtP(m.promR), ""),
+    kpi("Classroom Util.", fmtP(m.classU), "vs 40/room")
+  ].join("");
+
+  destroy("c_descEnroll");
+  charts.c_descEnroll = new Chart(document.getElementById("c_descEnroll"), {
+    type: "bar",
+    data: { labels: SY.map(s=>s.replace("SY ","")), datasets: [{ label: "Total BOSY", data: SY.map(s=>sum(rowsSY(s),"b")), backgroundColor: "#2563eb" }] },
+    options: chartOpts(false)
+  });
+
+  destroy("c_descGrade");
+  charts.c_descGrade = new Chart(document.getElementById("c_descGrade"), {
+    type: "bar",
+    data: { labels: GR.map(String), datasets: [{ label: "BOSY", data: rows.map(x=>x.b), backgroundColor: rows.map(x=>(x.g===9||x.g===10)?"#e67e22":"#1b3a5c") }] },
+    options: chartOpts(false)
+  });
+
+  destroy("c_descRates");
+  charts.c_descRates = new Chart(document.getElementById("c_descRates"), {
+    type: "line",
+    data: {
+      labels: SY.map(s=>s.replace("SY ","")),
+      datasets: [
+        { label: "Retention %", data: SY.map(s=>metrics(s).retR), borderColor: "#059669", tension: 0.3 },
+        { label: "Dropout %", data: SY.map(s=>metrics(s).dropR), borderColor: "#c0392b", tension: 0.3 },
+        { label: "Repeater %", data: SY.map(s=>metrics(s).repR), borderColor: "#8e44ad", tension: 0.3 }
+      ]
+    },
+    options: { ...chartOpts(), scales: { y: { min: 0, max: 100 } } }
+  });
+
+  destroy("c_descJhsShs");
+  charts.c_descJhsShs = new Chart(document.getElementById("c_descJhsShs"), {
+    type: "doughnut",
+    data: { labels: ["JHS","SHS"], datasets: [{ data: [m.jhs, m.t-m.jhs], backgroundColor: ["#1b3a5c","#3498db"] }] },
+    options: chartOpts(false)
+  });
+
+  const st = strandTotals(selSY);
+  const stL = Object.keys(st).filter(k=>st[k]>0);
+  destroy("c_descStrand");
+  charts.c_descStrand = new Chart(document.getElementById("c_descStrand"), {
+    type: "pie",
+    data: { labels: stL, datasets: [{ data: stL.map(k=>st[k]), backgroundColor: ["#1b3a5c","#8e44ad","#16a085","#e67e22","#c0392b","#7f8c8d"] }] },
+    options: chartOpts(false)
+  });
+
+  let h = "<tr><th>Metric</th><th>SY 2021–22</th><th>SY 2025–26</th><th>Change</th></tr>";
+  [["Enrollment",f.t,l.t],["G9–10",f.g910,l.g910],["Dropout Rate",f.dropR,l.dropR],["Retention",f.retR,l.retR]].forEach(([name,a,b])=>{
+    const ch = typeof a==="number"&&typeof b==="number"&&a!==b ? (b>a?"▲":"▼")+" "+(name.includes("Rate")?fmtP(Math.abs(b-a)):fmt(Math.abs(b-a))) : "—";
+    h += `<tr><td>${name}</td><td>${name.includes("Rate")?fmtP(a):fmt(a)}</td><td>${name.includes("Rate")?fmtP(b):fmt(b)}</td><td>${ch}</td></tr>`;
+  });
+  document.getElementById("tblDesc").innerHTML = h;
+
+  document.getElementById("descInsights").innerHTML = [
+    insightCard("desc","Historical enrollment pattern",
+      `Enrollment decreased from ${fmt(f.t)} (SY 2021–2022 peak) to ${fmt(l.t)} (latest) — a ${fmtP(pct(l.t-f.t,f.t))} change over five years.`,
+      "BOSY registrar data"),
+    insightCard("desc","Attrition profile (latest SY)",
+      `${fmt(l.dr)} dropouts (${fmtP(l.dropR)}) and ${fmt(l.rr)} repeaters (${fmtP(l.repR)}). Estimated promotion rate: ${fmtP(l.promR)}.`,
+      selSY)
+  ].join("");
+}
+
+/* ========== DIAGNOSTIC ========== */
+function renderDiagnostic() {
+  const rows = rowsSY(selSY);
+  const totalDrop = sum(rows,"d");
+  const g9 = rows.find(x=>x.g===9);
+  const m = metrics(selSY);
+
+  document.getElementById("kpiDiag").innerHTML = [
+    kpi("G9 Dropout Share", fmtP(pct(g9.d,totalDrop)), fmt(g9.d)+" of "+totalDrop),
+    kpi("G9–10 Enrollment Δ (5yr)", fmtP(pct(metrics("SY 2025-2026").g910-metrics("SY 2021-2022").g910,metrics("SY 2021-2022").g910)), "vs 2021–22"),
+    kpi("English Teachers Δ", "8 → 6", "2021–22 to 2025–26"),
+    kpi("JHS:English Ratio", m.ratioEn+":1", "Capacity stress"),
+    kpi("Highest Repeater SY", "G8: 53", "SY 2022–2023 spike"),
+    kpi("GAS Strand", "0", "Shift to HUMSS/ICT")
+  ].join("");
+
+  destroy("c_diagPareto");
+  const dropByG = rows.map(x=>x.d);
+  let cum = 0;
+  const cumPct = dropByG.map(d => { cum += d; return pct(cum, totalDrop); });
+  charts.c_diagPareto = new Chart(document.getElementById("c_diagPareto"), {
+    type: "bar",
+    data: {
+      labels: GR.map(String),
+      datasets: [
+        { label: "Dropouts", data: dropByG, backgroundColor: "#c0392b", yAxisID: "y" },
+        { label: "Cumulative %", data: cumPct, type: "line", borderColor: "#d97706", yAxisID: "y1", tension: 0.3 }
+      ]
+    },
+    options: { ...chartOpts(), scales: { y: { position:"left" }, y1: { position:"right", max:100, grid:{drawOnChartArea:false} } } }
+  });
+
+  destroy("c_diagG910");
+  charts.c_diagG910 = new Chart(document.getElementById("c_diagG910"), {
+    type: "line",
+    data: {
+      labels: SY.map(s=>s.replace("SY ","")),
+      datasets: [
+        { label: "Grades 9–10", data: SY.map(s=>rowsSY(s).filter(x=>x.g===9||x.g===10).reduce((a,x)=>a+x.b,0)), borderColor: "#d97706", tension: 0.3, fill: true, backgroundColor: "rgba(217,119,6,0.15)" },
+        { label: "Grades 7–8+11–12", data: SY.map(s=>{ const r=rowsSY(s); return sum(r,"b")-r.filter(x=>x.g===9||x.g===10).reduce((a,x)=>a+x.b,0); }), borderColor: "#64748b", tension: 0.3 }
+      ]
+    },
+    options: chartOpts()
+  });
+
+  destroy("c_diagTeachers");
+  charts.c_diagTeachers = new Chart(document.getElementById("c_diagTeachers"), {
+    type: "bar",
+    data: {
+      labels: SY.map(s=>s.replace("SY ","")),
+      datasets: [
+        { label: "English Teachers", data: SY.map(s=>teachers[s].ENGLISH), backgroundColor: "#1b3a5c", yAxisID: "y" },
+        { label: "JHS:English Ratio", data: SY.map(s=>metrics(s).ratioEn), type: "line", borderColor: "#d97706", yAxisID: "y1", tension: 0.3 }
+      ]
+    },
+    options: { ...chartOpts(), scales: { y: { position:"left" }, y1: { position:"right", grid:{drawOnChartArea:false} } } }
+  });
+
+  destroy("c_diagUtilDrop");
+  charts.c_diagUtilDrop = new Chart(document.getElementById("c_diagUtilDrop"), {
+    type: "scatter",
+    data: {
+      datasets: [{
+        label: "Grade",
+        data: rows.map(x=>({ x: pct(x.b,x.c*40), y: pct(x.d,x.b), label: "G"+x.g })),
+        backgroundColor: rows.map(x=>x.g===9?"#c0392b":"#3498db"),
+        pointRadius: 10
+      }]
+    },
+    options: {
+      ...chartOpts(false),
+      scales: {
+        x: { title: { display: true, text: "Classroom Utilization %" } },
+        y: { title: { display: true, text: "Dropout Rate %" } }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: ctx => `G${rows[ctx.dataIndex].g}: Util ${ctx.raw.x.toFixed(1)}%, Dropout ${ctx.raw.y.toFixed(1)}%`
+          }
+        }
+      }
+    }
+  });
+
+  let hh = "<tr><th>Grade</th>"+SY.slice(1).map(s=>"<th>Δ BOSY<br>"+s.replace("SY ","")+"</th>").join("")+"</tr>";
+  GR.forEach(g => {
+    hh += `<tr><td>${g}</td>`;
+    for (let i = 1; i < SY.length; i++) {
+      const cur = master.find(x=>x.sy===SY[i]&&x.g===g);
+      const prev = master.find(x=>x.sy===SY[i-1]&&x.g===g);
+      const d = cur.b - prev.b;
+      const cls = d <= -30 ? "risk-high" : d < 0 ? "risk-med" : d > 20 ? "risk-low" : "";
+      hh += `<td class="${cls}">${d>=0?"▲":"▼"} ${Math.abs(d)}</td>`;
+    }
+    hh += "</tr>";
+  });
+  document.getElementById("tblDiagHeat").innerHTML = hh;
+
+  const findings = [
+    { t: "Root cause: Grades 9–10 enrollment collapse", b: `G9–10 fell from ${fmt(metrics("SY 2021-2022").g910)} to ${fmt(metrics("SY 2025-2026").g910)} (−46%). This explains most of the school-wide enrollment decline.`, e: "5-year BOSY by grade" },
+    { t: "Root cause: Grade 9 dropout concentration", b: `Grade 9 accounts for ${fmtP(pct(g9.d,totalDrop))} of all dropouts in ${selSY} (${g9.d} cases).`, e: "Pareto analysis" },
+    { t: "Contributing factor: Teacher staffing erosion", b: "English/Math/Filipino teachers reduced from 8 each to 6; JHS student–teacher ratio exceeds 230:1.", e: "Teacher deployment records" },
+    { t: "Contributing factor: Repeater spikes", b: "Grade 8 had 53 repeaters (SY 2022–23); Grade 11 had 43 (SY 2023–24) — signals curriculum/transition stress points.", e: "Attrition data" },
+    { t: "SHS program shift", b: "GAS strand enrollment dropped to 0 while HUMSS and ICT/CSS dominate — program mix no longer matches historical offering.", e: "Strand census" }
+  ];
+  document.getElementById("diagFindings").innerHTML = findings.map(f =>
+    insightCard("diag", f.t, f.b, f.e)).join("");
+}
+
+/* ========== PREDICTIVE ========== */
+function renderPredictive() {
+  const enrollSeries = SY.map(s=>sum(rowsSY(s),"b"));
+  const g910Series = SY.map(s=>rowsSY(s).filter(x=>x.g===9||x.g===10).reduce((a,x)=>a+x.b,0));
+  const dropSeries = SY.map(s=>metrics(s).dropR);
+  const fcBase = forecast(enrollSeries, 2);
+  const fcG910 = forecast(g910Series, 2);
+  const fcDrop = forecast(dropSeries, 2);
+  const improve = 1 - interventionPct/100;
+  const fcInterv = fcBase.map(v => Math.round(v * (1 + interventionPct/200)));
+
+  document.getElementById("kpiPred").innerHTML = [
+    kpi("Forecast SY 2026–27", fmt(fcBase[0]), "Baseline"),
+    kpi("With Intervention", fmt(fcInterv[0]), "+"+interventionPct+"% scenario"),
+    kpi("Forecast G9–10", fmt(fcG910[0]), "SY 2026–27"),
+    kpi("Proj. Dropout Rate", fmtP(Math.max(0,fcDrop[0])), "SY 2026–27"),
+    kpi("At-Risk Grade", "Grade 9", "Highest risk index"),
+    kpi("Confidence", "Medium", "5 data points")
+  ].join("");
+
+  destroy("c_predEnroll");
+  charts.c_predEnroll = new Chart(document.getElementById("c_predEnroll"), {
+    type: "line",
+    data: {
+      labels: [...SY.map(s=>s.replace("SY ","")), ...SY_FUTURE.map(s=>s.replace("SY ",""))],
+      datasets: [
+        { label: "Actual", data: [...enrollSeries, null, null], borderColor: "#2563eb", tension: 0.3, pointRadius: 5 },
+        { label: "Baseline Forecast", data: [...Array(4).fill(null), enrollSeries[4], ...fcBase], borderColor: "#7c3aed", borderDash: [5,5], tension: 0.3 },
+        { label: "Intervention Scenario", data: [...Array(4).fill(null), enrollSeries[4], ...fcInterv], borderColor: "#059669", borderDash: [2,2], tension: 0.3 }
+      ]
+    },
+    options: chartOpts()
+  });
+
+  destroy("c_predDrop");
+  charts.c_predDrop = new Chart(document.getElementById("c_predDrop"), {
+    type: "bar",
+    data: {
+      labels: [...SY.map(s=>s.replace("SY ","")), ...SY_FUTURE.map(s=>s.replace("SY ",""))],
+      datasets: [{
+        label: "Dropout Rate %",
+        data: [...dropSeries, ...fcDrop.map(v=>Math.max(0,v)*improve)],
+        backgroundColor: [...dropSeries.map(()=>"#c0392b"), ...fcDrop.map(()=>"#a855f7")]
+      }]
+    },
+    options: { ...chartOpts(false), scales: { y: { min: 0 } } }
+  });
+
+  destroy("c_predG910");
+  charts.c_predG910 = new Chart(document.getElementById("c_predG910"), {
+    type: "line",
+    data: {
+      labels: [...SY.map(s=>s.replace("SY ","")), ...SY_FUTURE.map(s=>s.replace("SY ",""))],
+      datasets: [
+        { label: "G9–10 Actual", data: [...g910Series, null, null], borderColor: "#d97706", tension: 0.3 },
+        { label: "G9–10 Forecast", data: [...Array(4).fill(null), g910Series[4], ...fcG910], borderColor: "#7c3aed", borderDash: [5,5], tension: 0.3 }
+      ]
+    },
+    options: chartOpts()
+  });
+
+  let rh = "<tr><th>Grade</th><th>Risk Index (0–100)</th><th>Latest Dropout %</th><th>Enrollment Trend</th><th>Outlook</th></tr>";
+  GR.forEach(g => {
+    const rs = gradeRiskScore(g);
+    const cls = rs.score >= 60 ? "risk-high" : rs.score >= 35 ? "risk-med" : "risk-low";
+    const outlook = rs.score >= 60 ? "Critical — prioritize intervention" : rs.score >= 35 ? "Monitor closely" : "Stable";
+    rh += `<tr><td>${g}</td><td class="${cls}">${rs.score}</td><td>${fmtP(rs.last.dropR)}</td><td>${rs.enrollTrend>=0?"▲":"▼"} ${Math.abs(rs.enrollTrend).toFixed(0)}/yr</td><td>${outlook}</td></tr>`;
+  });
+  document.getElementById("tblRisk").innerHTML = rh;
+
+  document.getElementById("predInsights").innerHTML = [
+    insightCard("pred","Enrollment projection",
+      `If the 5-year trend continues, total BOSY may reach ~${fmt(fcBase[0])} in SY 2026–2027 and ~${fmt(fcBase[1])} in SY 2027–2028.`,
+      "Linear regression on annual totals"),
+    insightCard("pred","G9–10 trajectory",
+      `Grades 9–10 could fall to ~${fmt(fcG910[0])} learners without targeted retention — below sustainable section planning thresholds.`,
+      "Grade-level regression"),
+    insightCard("pred","Scenario with intervention",
+      `A ${interventionPct}% retention improvement scenario lifts the SY 2026–27 forecast to ~${fmt(fcInterv[0])} learners — use for goal-setting in the School Improvement Plan.`,
+      "User-adjustable slider")
+  ].join("");
+}
+
+/* ========== PRESCRIPTIVE ========== */
+const ACTIONS = [
+  { title: "Grades 9–10 Retention & Recovery Program", type: "pres", impact: 9, effort: 6, priority: "high",
+    action: "Monthly task force, parent conferences, remedial blocks.", links: "Diagnostic: G9–10 decline; Predictive: G9–10 forecast" },
+  { title: "Early Warning System (EWS)", type: "pres", impact: 8, effort: 4, priority: "high",
+    action: "Flag learners at Week 4 & 12 for attendance <85% or grades <75.", links: "Predictive: Grade 9 risk index" },
+  { title: "Grade 8 & 11 Remedial Program", type: "pres", impact: 7, effort: 5, priority: "high",
+    action: "Saturday/after-school support in Math, English, Filipino.", links: "Diagnostic: repeater spikes" },
+  { title: "SDO Core Teacher Deployment Request", type: "pres", impact: 8, effort: 7, priority: "high",
+    action: "Submit dashboard pack for English/Math/Filipino positions.", links: "Diagnostic: ratio >230:1" },
+  { title: "Section & Classroom Rebalancing", type: "pres", impact: 5, effort: 4, priority: "medium",
+    action: "Merge underfilled sections; cap at 40 where over capacity.", links: "Descriptive: utilization rates" },
+  { title: "Feeder School Enrollment Campaign", type: "pres", impact: 6, effort: 6, priority: "medium",
+    action: "Grade 7 orientation with elementary schools and barangays.", links: "Predictive: enrollment forecast" },
+  { title: "SHS Strand Alignment (HUMSS & ICT/CSS)", type: "pres", impact: 6, effort: 7, priority: "medium",
+    action: "Invest in labs, teachers, and slots for high-demand strands.", links: "Diagnostic: GAS → 0" },
+  { title: "Quarterly Analytics Review", type: "pres", impact: 5, effort: 3, priority: "medium",
+    action: "Principal + heads review 4 analytics types; document actions.", links: "All analytics layers" }
+];
+
+function renderPrescriptive() {
+  document.getElementById("quadQuick").innerHTML = `
+    <li>Grade 9 dropout alert — immediate parent calls</li>
+    <li>Deploy EWS at Week 4</li>
+    <li>One-page KPI bulletin for staff</li>`;
+  document.getElementById("quadStrategic").innerHTML = `
+    <li>G9–10 Retention & Recovery Program</li>
+    <li>SDO teacher deployment request</li>
+    <li>Multi-year feeder school partnership</li>`;
+  document.getElementById("quadMonitor").innerHTML = `
+    <li>SHS Grade 12 stability</li>
+    <li>Grade 7 enrollment recovery</li>`;
+  document.getElementById("quadPrevent").innerHTML = `
+    <li>Target Grade 9 before SY 2026–27 BOSY</li>
+    <li>Cap classroom size where forecast shows strain</li>
+    <li>Pre-register G7 from feeder schools by March</li>`;
+
+  document.getElementById("presActions").innerHTML = ACTIONS.map((a,i) => `
+    <div class="insight-card pres">
+      <h5>${i+1}. ${a.title} <span class="tag tag-pres">${a.priority.toUpperCase()}</span></h5>
+      <p><strong>Action:</strong> ${a.action}</p>
+      <p><strong>Linked analysis:</strong> ${a.links}</p>
+      <p><strong>Impact / Effort:</strong> ${a.impact}/10 · ${a.effort}/10 effort</p>
+    </div>`).join("");
+
+  destroy("c_presMatrix");
+  charts.c_presMatrix = new Chart(document.getElementById("c_presMatrix"), {
+    type: "scatter",
+    data: {
+      datasets: [{
+        label: "Actions",
+        data: ACTIONS.map(a=>({ x: a.effort, y: a.impact, label: a.title })),
+        backgroundColor: ACTIONS.map(a=>a.priority==="high"?"#059669":"#3498db"),
+        pointRadius: 12
+      }]
+    },
+    options: {
+      ...chartOpts(false),
+      scales: {
+        x: { min: 0, max: 10, title: { display: true, text: "Effort (lower = easier)" } },
+        y: { min: 0, max: 10, title: { display: true, text: "Expected Impact" } }
+      },
+      plugins: {
+        tooltip: { callbacks: { label: c => ACTIONS[c.dataIndex].title } }
+      }
+    }
+  });
+}
+
+function renderExplorer() {
+  let h = "<tr><th>School Year</th><th>Grade</th><th>BOSY</th><th>Repeaters</th><th>Drop Out</th><th>Classroom</th></tr>";
+  master.forEach(x => h+=`<tr><td>${x.sy}</td><td>${x.g}</td><td>${x.b}</td><td>${x.r}</td><td>${x.d}</td><td>${x.c}</td></tr>`);
+  document.getElementById("tblMaster").innerHTML = h;
+  h = "<tr><th>School Year</th><th>English</th><th>Math</th><th>Filipino</th></tr>";
+  SY.forEach(sy => { const t=teachers[sy]; h+=`<tr><td>${sy}</td><td>${t.ENGLISH}</td><td>${t.MATH}</td><td>${t.FILIPINO}</td></tr>`; });
+  document.getElementById("tblTeachers").innerHTML = h;
+}
+
+function buildNav() {
+  document.getElementById("navTabs").innerHTML = TABS.map((t,i)=>
+    `<button class="nav-tab${i===0?" active":""}" data-sec="sec-${t.id}" data-type="${t.type}">${t.label}</button>`).join("");
+  document.querySelectorAll(".nav-tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".nav-tab").forEach(b=>b.classList.remove("active"));
+      document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.sec).classList.add("active");
+    });
+  });
+}
+
+function resetFilters() {
+  selSY="SY 2025-2026"; selGrade="all"; selProgram="all"; interventionPct=10;
+  document.getElementById("fSY").value=selSY;
+  document.getElementById("fGrade").value="all";
+  document.getElementById("fProgram").value="all";
+  document.getElementById("fIntervention").value=10;
+  document.getElementById("interventionLabel").textContent="10%";
+  refresh();
+}
+
+function refresh() {
+  renderOverview();
+  renderDescriptive();
+  renderDiagnostic();
+  renderPredictive();
+  renderPrescriptive();
+  renderExplorer();
+}
+
+document.getElementById("genDate").textContent = "Generated: "+new Date().toLocaleString();
+const fSY = document.getElementById("fSY");
+SY.forEach(s => { const o=document.createElement("option"); o.value=s; o.textContent=s; if(s===selSY)o.selected=true; fSY.appendChild(o); });
+fSY.onchange = e => { selSY=e.target.value; refresh(); };
+document.getElementById("fIntervention").oninput = e => {
+  interventionPct = +e.target.value;
+  document.getElementById("interventionLabel").textContent = interventionPct+"%";
+  renderPredictive();
+  renderOverview();
+};
+
+buildNav();
+refresh();
+</script>
+</body>
+</html>
