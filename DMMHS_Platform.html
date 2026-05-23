@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DMMHS — School Performance Analytics Platform</title>
+  <link rel="stylesheet" href="css/dmmhs-platform.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div id="loader">
+  <img src="assets/dmmhs-logo.png" alt="DMMHS" class="loader-logo" />
+  <div class="loader-bar"><div class="loader-bar-fill"></div></div>
+  <p class="loader-text">Loading DMMHS Analytics Platform…</p>
+</div>
+
+<div id="loginPage">
+  <div class="login-bg"></div>
+  <div class="login-card">
+    <img src="assets/dmmhs-logo.png" alt="DMMHS Logo" class="login-logo" />
+    <p class="login-motto">ONE TEAM · ONE DREAM</p>
+    <h1>Diosdado Macapagal Memorial High School</h1>
+    <p class="loc">Floridablanca, Pampanga · Est. 2001</p>
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="loginUser">Username</label>
+        <input id="loginUser" type="text" placeholder="Enter username" autocomplete="username" required />
+      </div>
+      <div class="form-group">
+        <label for="loginPass">Password</label>
+        <input id="loginPass" type="password" placeholder="Enter password" autocomplete="current-password" required />
+      </div>
+      <button type="submit" class="btn-login">Sign In to Dashboard</button>
+      <p id="loginError" class="login-error"></p>
+    </form>
+  </div>
+</div>
+
+<div id="app">
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-brand">
+      <img src="assets/dmmhs-logo.png" alt="DMMHS" />
+      <h2>DMMHS<br>Performance Platform</h2>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-page="home">Dashboard Home</button>
+      <button class="nav-item" data-page="descriptive">1. Descriptive</button>
+      <button class="nav-item" data-page="diagnostic">2. Diagnostic</button>
+      <button class="nav-item" data-page="predictive">3. Predictive</button>
+      <button class="nav-item" data-page="prescriptive">4. Prescriptive</button>
+      <button class="nav-item" data-page="data">Data Manager</button>
+    </nav>
+    <div class="sidebar-footer">© DMMHS · FIS 2001<br>Capstone Analytics Demo</div>
+  </aside>
+
+  <div class="main-wrap">
+    <header class="topbar">
+      <button id="menuToggle" class="menu-toggle" aria-label="Menu">☰</button>
+      <img src="assets/dmmhs-logo.png" alt="" class="topbar-logo-sm" />
+      <div class="search-box">
+        <input id="globalSearch" type="search" placeholder="Search grades, strands, school years…" />
+      </div>
+      <div class="topbar-actions">
+        <button id="notifBtn" class="icon-btn" title="Notifications" style="position:relative">🔔<span class="notif-dot"></span></button>
+        <button id="btnTheme" class="icon-btn" title="Dark / Light mode">🌓</button>
+        <button id="btnExportExcel" class="btn btn-yellow btn-sm">Excel</button>
+        <button id="btnExportPdf" class="btn btn-primary btn-sm">PDF</button>
+        <span class="user-pill">DMMHS Admin</span>
+        <button id="btnLogout" class="btn btn-outline btn-sm">Logout</button>
+      </div>
+    </header>
+
+    <div class="filter-strip">
+      <div><label>School Year</label><br><select id="fSY"></select></div>
+      <div><label>Grade</label><br>
+        <select id="fGrade">
+          <option value="all">All Grades</option>
+          <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+          <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+        </select>
+      </div>
+      <div><label>Strand</label><br>
+        <select id="fStrand">
+          <option value="all">All Strands</option>
+          <option value="STEM">STEM</option><option value="ABM">ABM</option><option value="HUMSS">HUMSS</option>
+          <option value="GAS">GAS</option><option value="ICT/CSS">ICT/CSS</option><option value="EIM">EIM</option><option value="HBC">HBC</option>
+        </select>
+      </div>
+      <div><label>Intervention %</label><br>
+        <input id="fIntervention" type="range" min="0" max="30" value="10" step="1" style="width:140px;vertical-align:middle" />
+        <span id="interventionLabel" style="color:var(--purple);font-weight:800">10%</span>
+      </div>
+      <button id="btnResetDb" class="btn btn-outline btn-sm" style="margin-left:auto">Reset Database</button>
+    </div>
+
+    <main class="content">
+      <section id="page-home" class="page active">
+        <div class="page-header">
+          <h2>Dashboard Home</h2>
+          <p>Integrated school performance overview — descriptive, diagnostic, predictive &amp; prescriptive analytics.</p>
+        </div>
+        <div class="kpi-grid" id="kpiHome"></div>
+        <div class="insights-panel" id="insightsHome"><h4>Smart Insights Panel</h4></div>
+        <div class="chart-card full" style="margin-bottom:1rem">
+          <h4>Analytics Pipeline — Enrollment &amp; Retention</h4>
+          <div class="chart-box tall"><canvas id="ch_home_pipe"></canvas></div>
+        </div>
+      </section>
+
+      <section id="page-descriptive" class="page">
+        <div class="page-header">
+          <h2>Descriptive Analytics</h2>
+          <p>What happened? Historical enrollment, strand distribution, gender, and completion rates.</p>
+          <span class="analytics-badge badge-desc">WHAT HAPPENED?</span>
+        </div>
+        <div class="kpi-grid" id="kpiDesc"></div>
+        <div class="chart-grid">
+          <div class="chart-card full"><h4>Enrollment Totals by School Year</h4><div class="chart-box"><canvas id="ch_desc_enroll"></canvas></div></div>
+          <div class="chart-card"><h4>Gender Statistics</h4><div class="chart-box"><canvas id="ch_desc_gender"></canvas></div></div>
+          <div class="chart-card"><h4>SHS Strand Distribution</h4><div class="chart-box"><canvas id="ch_desc_strand"></canvas></div></div>
+          <div class="chart-card"><h4>Grade-Level Enrollment</h4><div class="chart-box"><canvas id="ch_desc_grade"></canvas></div></div>
+          <div class="chart-card"><h4>Completion Rate Trend</h4><div class="chart-box"><canvas id="ch_desc_completion"></canvas></div></div>
+        </div>
+        <div class="table-wrap"><table id="tblDesc"></table></div>
+      </section>
+
+      <section id="page-diagnostic" class="page">
+        <div class="page-header">
+          <h2>Diagnostic Analytics</h2>
+          <p>Why did it happen? Declining trends, low-performing strands, attendance &amp; dropout analysis.</p>
+          <span class="analytics-badge badge-diag">WHY DID IT HAPPEN?</span>
+        </div>
+        <div class="kpi-grid" id="kpiDiag"></div>
+        <div class="chart-grid">
+          <div class="chart-card full"><h4>Enrollment vs Dropout Rate — Comparative Year Analysis</h4><div class="chart-box"><canvas id="ch_diag_trend"></canvas></div></div>
+          <div class="chart-card"><h4>Strand Performance (Low = Alert)</h4><div class="chart-box"><canvas id="ch_diag_strand"></canvas></div></div>
+          <div class="chart-card"><h4>Attendance vs Dropout by Grade</h4><div class="chart-box"><canvas id="ch_diag_attend"></canvas></div></div>
+        </div>
+        <div class="chart-card" style="margin-bottom:1rem">
+          <h4>Year-over-Year Change Heatmap</h4>
+          <div class="table-wrap" style="border:none;padding:0"><table id="tblDiagHeat"></table></div>
+        </div>
+        <div class="insights-panel"><h4>Diagnostic Findings</h4><div id="diagFindings"></div></div>
+      </section>
+
+      <section id="page-predictive" class="page">
+        <div class="page-header">
+          <h2>Predictive Analytics</h2>
+          <p>What may happen? Enrollment forecasting, strand demand, dropout risk indicators.</p>
+          <span class="analytics-badge badge-pred">WHAT MAY HAPPEN?</span>
+        </div>
+        <div class="kpi-grid" id="kpiPred"></div>
+        <div class="chart-grid">
+          <div class="chart-card full"><h4>Enrollment Forecast — Baseline vs Intervention</h4><div class="chart-box tall"><canvas id="ch_pred_enroll"></canvas></div></div>
+          <div class="chart-card full"><h4>Strand Demand Trends (Predicted Direction)</h4><div class="chart-box"><canvas id="ch_pred_strand"></canvas></div></div>
+        </div>
+        <div class="chart-card" style="margin-bottom:1rem">
+          <h4>Dropout Risk Index by Grade</h4>
+          <div class="table-wrap" style="border:none;padding:0"><table id="tblRisk"></table></div>
+        </div>
+        <div class="insights-panel"><h4>Predictive Insights</h4><div id="predInsights"></div></div>
+      </section>
+
+      <section id="page-prescriptive" class="page">
+        <div class="page-header">
+          <h2>Prescriptive Analytics</h2>
+          <p>What should we do? AI-generated recommendations, interventions, and strategic planning.</p>
+          <span class="analytics-badge badge-pres">WHAT SHOULD WE DO?</span>
+        </div>
+        <div id="presList"></div>
+        <div class="chart-card" style="margin-top:1rem">
+          <h4>Action Priority Matrix (Impact vs Effort)</h4>
+          <div class="chart-box"><canvas id="ch_pres_matrix"></canvas></div>
+        </div>
+      </section>
+
+      <section id="page-data" class="page">
+        <div class="page-header">
+          <h2>Data Manager</h2>
+          <p>CRUD editor — all changes save to localStorage and update charts &amp; KPIs in real time.</p>
+        </div>
+        <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">
+          <button id="btnAddMaster" class="btn btn-primary btn-sm">+ Add Enrollment Record</button>
+          <button id="btnAddStrand" class="btn btn-yellow btn-sm">+ Add Strand Record</button>
+        </div>
+        <h4 style="margin-bottom:0.5rem;color:var(--blue-dark)">Enrollment Data</h4>
+        <div class="table-wrap"><table id="tblDataMaster"></table></div>
+        <h4 style="margin:1rem 0 0.5rem;color:var(--blue-dark)">SHS Strand Data</h4>
+        <div class="table-wrap"><table id="tblDataStrand"></table></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div id="dataModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Edit Record</h3>
+      <button id="btnCloseModal" class="icon-btn">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="document.getElementById('btnCloseModal').click()">Cancel</button>
+      <button id="btnSaveModal" class="btn btn-primary">Save &amp; Update Dashboard</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastWrap" class="toast-wrap"></div>
+
+<script src="js/dmmhs-seed.js"></script>
+<script src="js/dmmhs-app.js"></script>
+</body>
+</html>
