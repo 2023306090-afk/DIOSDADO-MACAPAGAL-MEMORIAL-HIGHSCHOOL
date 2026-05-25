@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diosdado Macapagal Memorial Highschool | School Performance Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --card-bg: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --accent-blue: #3b82f6;
+            --accent-red: #ef4444;
+            --accent-orange: #f59e0b;
+            --accent-green: #10b981;
+            --chart-tick: #cbd5e1;
+        }
+
+        body.light-theme {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --border-color: #e2e8f0;
+            --chart-tick: #334155;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        /* Login Page Styles */
+        #loginPageWrap {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            z-index: 1000;
+        }
+
+        body.light-theme #loginPageWrap {
+            background: linear-gradient(135deg, #e0e7ff 0%, #fbcfe8 100%);
+        }
+
+        #loginPageWrap.hidden {
+            display: none;
+        }
+
+        .login-container {
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(12px);
+            border-radius: 2rem;
+            padding: 2.5rem;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        body.light-theme .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .logo-area {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .brand-logo {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .login-motto {
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            color: var(--accent-blue);
+            margin-bottom: 0.5rem;
+        }
+
+        .login-container h2 {
+            font-size: 1.25rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .login-sub {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        body.light-theme .input-group {
+            background: #f1f5f9;
+        }
+
+        .input-group i {
+            color: var(--text-secondary);
+            margin-right: 0.75rem;
+        }
+
+        .input-group input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        body.light-theme .input-group input {
+            color: #0f172a;
+        }
+
+        .options {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+        }
+
+        .remember {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.85rem;
+            background: var(--accent-blue);
+            border: none;
+            border-radius: 1rem;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .error-msg {
+            color: var(--accent-red);
+            font-size: 0.8rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .error-msg.show {
+            display: block;
+        }
+
+        /* App Wrapper */
+        .app-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            padding: 1.5rem 1rem;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            transition: all 0.3s;
+            z-index: 100;
+        }
+
+        .sidebar.collapsed {
+            width: 80px;
+        }
+
+        .sidebar.collapsed .sidebar-brand-text,
+        .sidebar.collapsed .nav-item span,
+        .sidebar.collapsed .sidebar-footer-text,
+        .sidebar.collapsed .logout-side span {
+            display: none;
+        }
+
+        .sidebar.collapsed .nav-item {
+            justify-content: center;
+        }
+
+        .sidebar.collapsed .nav-item i {
+            margin-right: 0;
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-logo {
+            width: 45px;
+            height: 45px;
+            border-radius: 0.75rem;
+        }
+
+        .brand-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .brand-sub {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            margin: 0.25rem 0;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+        }
+
+        .nav-item:hover {
+            background: var(--card-bg);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .nav-item i {
+            width: 20px;
+        }
+
+        .sidebar-footer-text {
+            font-size: 0.7rem;
+            text-align: center;
+            color: var(--text-secondary);
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Dashboard Shell */
+        .dashboard-shell {
+            flex: 1;
+            margin-left: 280px;
+            transition: margin-left 0.3s;
+        }
+
+        .sidebar.collapsed + .dashboard-shell {
+            margin-left: 80px;
+        }
+
+        /* Header */
+        .premium-header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 99;
+        }
+
+        .header-center {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-logo {
+            width: 45px;
+            height: 45px;
+            border-radius: 0.75rem;
+        }
+
+        .header-school-name {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .header-tagline {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .header-profile {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .profile-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-name {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .profile-role {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 2rem;
+            overflow-y: auto;
+            max-height: calc(100vh - 80px);
+        }
+
+        .page-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .action-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .btn-icon {
+            padding: 0.5rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+        }
+
+        .logout-side {
+            padding: 0.5rem 1rem;
+            background: var(--accent-red);
+            border: none;
+            border-radius: 0.5rem;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .logout-side:hover {
+            filter: brightness(1.1);
+        }
+
+        /* Cards */
+        .info-card {
+            background: var(--card-bg);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .kpi-card .value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-top: 0.5rem;
+        }
+
+        .kpi-blue {
+            border-top: 4px solid var(--accent-blue);
+        }
+
+        .kpi-drop {
+            border-top: 4px solid var(--accent-red);
+        }
+
+        .kpi-rep {
+            border-top: 4px solid var(--accent-orange);
+        }
+
+        .kpi-teach {
+            border-top: 4px solid var(--accent-green);
+        }
+
+        .global-slicer {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .year-selector {
+            padding: 0.5rem 1rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .data-table th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            background: var(--bg-primary);
+            border-radius: 2rem;
+            font-size: 0.8rem;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 200;
+            padding: 0.75rem;
+            background: var(--accent-blue);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .dashboard-shell {
+                margin-left: 0;
+            }
+            .mobile-menu-btn {
+                display: block;
+            }
+            .premium-header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+
+        .view-enter {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="dark-theme">
+
+<div id="loginPageWrap">
+    <div class="login-container">
+        <div class="logo-area">
+            <div style="width:80px;height:80px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:1rem;margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;font-size:2rem;">🏫</div>
+            <p class="login-motto">ONE TEAM · ONE DREAM</p>
+            <h2>Diosdado Macapagal Memorial Highschool</h2>
+            <p class="login-sub">School Performance Monitoring Dashboard</p>
+            <p class="login-sub">Floridablanca, Pampanga · Est. 2001</p>
+        </div>
+        <form id="loginForm">
+            <div class="input-group"><i class="fas fa-envelope"></i><input type="email" id="emailInput" placeholder="Email address" autocomplete="email" required></div>
+            <div class="input-group"><i class="fas fa-lock"></i><input type="password" id="passwordInput" placeholder="Password" required></div>
+            <div class="options"><label class="remember"><input type="checkbox" id="rememberCheck"> <span>Remember me</span></label><a href="#" id="forgotLink" style="color:var(--text-secondary);">Forgot?</a></div>
+            <button type="submit" class="login-btn"><i class="fas fa-arrow-right-to-bracket"></i> Sign In</button>
+            <div id="loginError" class="error-msg"></div>
+        </form>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+            <span style="font-size:0.68rem;">admin@dmmhs.edu.ph / admin123 · editor@dmmhs.edu.ph / editor123</span>
+            <button id="loginThemeToggle" type="button" class="btn-icon" style="padding: 0.3rem 0.9rem;"><i class="fas fa-moon"></i> Theme</button>
+        </div>
+    </div>
+</div>
+
+<div id="appWrapper" class="app-wrapper" style="display:none;">
+    <button class="mobile-menu-btn" id="mobileMenuToggle"><i class="fas fa-bars"></i></button>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div style="width:45px;height:45px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">🏫</div>
+            <div class="sidebar-brand-text">
+                <span class="brand-title">Diosdado Macapagal Memorial Highschool</span>
+                <span class="brand-sub">Analytics Portal</span>
+            </div>
+        </div>
+        <div class="nav-item active" data-view="dashboard"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></div>
+        <div class="nav-item" data-view="enrollment"><i class="fas fa-user-graduate"></i><span>Enrollment</span></div>
+        <div class="nav-item" data-view="dropouts"><i class="fas fa-user-slash"></i><span>Dropouts</span></div>
+        <div class="nav-item" data-view="repeaters"><i class="fas fa-redo-alt"></i><span>Repeaters</span></div>
+        <div class="nav-item" data-view="classrooms"><i class="fas fa-door-open"></i><span>Classrooms</span></div>
+        <div class="nav-item" data-view="seats"><i class="fas fa-chair"></i><span>Seats</span></div>
+        <div class="nav-item" data-view="teachers"><i class="fas fa-chalkboard-user"></i><span>Teachers</span></div>
+        <div class="nav-item" data-view="shsstrands"><i class="fas fa-layer-group"></i><span>SHS Strands</span></div>
+        <div class="nav-item" data-view="reports"><i class="fas fa-chart-line"></i><span>Reports</span></div>
+        <div class="nav-item" data-view="analytics"><i class="fas fa-project-diagram"></i><span>Analytics</span></div>
+        <div class="nav-item" data-view="logs"><i class="fas fa-history"></i><span>Activity Logs</span></div>
+        <div class="nav-item" data-view="dataAdmin"><i class="fas fa-database"></i><span>Data Admin</span></div>
+        <p class="sidebar-footer-text">ONE TEAM · ONE DREAM · Est. 2001</p>
+        <div><button id="logoutSidebarBtn" class="logout-side" style="width:100%;"><i class="fas fa-sign-out-alt"></i> Logout</button></div>
+    </div>
+    <div class="dashboard-shell">
+        <header class="premium-header">
+            <div class="header-left">
+                <span><i class="fas fa-calendar-day"></i> <span id="headerDate"></span></span>
+                <span style="margin-left:1rem;"><i class="fas fa-clock"></i> <span id="headerClock"></span></span>
+            </div>
+            <div class="header-center">
+                <div style="width:45px;height:45px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;">🏫</div>
+                <div>
+                    <h1 class="header-school-name">Diosdado Macapagal Memorial Highschool</h1>
+                    <p class="header-tagline">School Performance Monitoring Dashboard</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="header-profile">
+                    <div class="profile-avatar"><i class="fas fa-user-shield"></i></div>
+                    <div>
+                        <span class="profile-name" id="profileName">Guest</span><br>
+                        <span class="profile-role" id="profileRole">VIEWER</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <div class="main-content" id="mainContent">
+            <div class="page-toolbar">
+                <h2 id="currentPageTitle">Dashboard</h2>
+                <div class="action-group">
+                    <button id="btnPrint" class="btn-icon" title="Print"><i class="fas fa-print"></i></button>
+                    <button id="btnExportJson" class="btn-icon" title="Export JSON"><i class="fas fa-file-export"></i></button>
+                    <button id="btnExportExcel" class="btn-icon" title="Export Excel"><i class="fas fa-file-excel"></i></button>
+                    <button id="dashboardThemeToggle" class="btn-icon"><i class="fas fa-palette"></i> <span id="themeToggleLabel">Dark</span></button>
+                    <button id="logoutTopBtn" class="logout-side"><i class="fas fa-sign-out-alt"></i> Exit</button>
+                </div>
+            </div>
+            <div id="dynamicView">Loading...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============ AUTHENTICATION ============
+    const VALID_ACCOUNTS = {
+        'admin@dmmhs.edu.ph': { password: 'admin123', role: 'admin', name: 'Administrator' },
+        'editor@dmmhs.edu.ph': { password: 'editor123', role: 'editor', name: 'Editor' },
+        'viewer@dmmhs.edu.ph': { password: 'viewer123', role: 'viewer', name: 'Viewer' }
+    };
+
+    // ============ DATA ============
+    let schoolYears = ["2021-2022","2022-2023","2023-2024","2024-2025","2025-2026"];
+    const grades = ["Grade 7","Grade 8","Grade 9","Grade 10","Grade 11","Grade 12"];
+    
+    let enrolleesData = {};
+    let dropoutsData = {};
+    let repeatersData = {};
+    let classroomsData = {};
+    let seatsData = {};
+    let teachersData = {};
+    let shsStrandsGrade11Data = {};
+    let shsStrandsGrade12Data = {};
+    let classroomsData = {};
+    let seatsData = {};
+    let teachersData = {};
+    let shsStrandsGrade11Data = {};
+    let shsStrandsGrade12Data = {};
+    
+    // Enrollees (BOSY) Data
+    const defaultEnrol = { 
+        "2021-2022":[475,465,548,558,445,340], 
+        "2022-2023":[422,424,508,482,465,342], 
+        "2023-2024":[313,335,392,413,340,413], 
+        "2024-2025":[402,318,305,367,368,340], 
+        "2025-2026":[432,380,300,294,323,338] 
+    };
+    
+    // Dropouts Data
+    const defaultDropouts = { 
+        "2021-2022":[33,14,28,17,4,0], 
+        "2022-2023":[20,12,26,0,23,0], 
+        "2023-2024":[15,14,16,16,7,10], 
+        "2024-2025":[16,17,22,11,5,0], 
+        "2025-2026":[9,10,31,9,14,2] 
+    };
+    
+    // Repeaters Data
+    const defaultRepeaters = { 
+        "2021-2022":[5,9,15,5,3,0], 
+        "2022-2023":[4,53,15,2,7,2], 
+        "2023-2024":[5,16,12,11,43,0], 
+        "2024-2025":[12,11,3,2,0,0], 
+        "2025-2026":[14,9,18,8,0,0] 
+    };
+    
+    // Classrooms Data
+    const defaultClassrooms = { 
+        "2021-2022":[11,12,13,12,9,9], 
+        "2022-2023":[11,10,11,11,12,9], 
+        "2023-2024":[10,10,11,11,9,12], 
+        "2024-2025":[11,9,10,10,11,9], 
+        "2025-2026":[11,10,9,8,14,8] 
+    };
+    
+    // Seats Data (same as enrollees)
+    const defaultSeats = { 
+        "2021-2022":[475,465,548,558,445,340], 
+        "2022-2023":[422,424,508,482,465,342], 
+        "2023-2024":[313,335,392,413,340,413], 
+        "2024-2025":[402,318,305,367,368,340], 
+        "2025-2026":[432,380,300,294,323,338] 
+    };
+    
+    // Teachers by Learning Area (JHS)
+    const defaultTeachersJHS = {
+        "ENGLISH": {"2021-2022":8,"2022-2023":8,"2023-2024":7,"2024-2025":7,"2025-2026":6},
+        "MATH": {"2021-2022":8,"2022-2023":8,"2023-2024":8,"2024-2025":6,"2025-2026":6},
+        "SCIENCE": {"2021-2022":8,"2022-2023":8,"2023-2024":8,"2024-2025":8,"2025-2026":7},
+        "FILIPINO": {"2021-2022":8,"2022-2023":8,"2023-2024":8,"2024-2025":6,"2025-2026":6},
+        "AP": {"2021-2022":8,"2022-2023":8,"2023-2024":8,"2024-2025":6,"2025-2026":7},
+        "VALUES": {"2021-2022":4,"2022-2023":4,"2023-2024":4,"2024-2025":6,"2025-2026":5},
+        "TLE": {"2021-2022":10,"2022-2023":11,"2023-2024":10,"2024-2025":9,"2025-2026":8},
+        "MAPEH": {"2021-2022":11,"2022-2023":11,"2023-2024":11,"2024-2025":9,"2025-2026":8}
+    };
+    
+    const defaultTeachersSHS = {
+        "ACAD": {"2021-2022":10,"2022-2023":11,"2023-2024":12,"2024-2025":12,"2025-2026":14},
+        "TVL": {"2021-2022":10,"2022-2023":11,"2023-2024":12,"2024-2025":12,"2025-2026":11}
+    };
+    
+    // SHS Strands Grade 11
+    const defaultGrade11Strands = {
+        "2021-2022": {"STEM":56,"ABM":49,"GAS":147,"HUMSS":0,"ICT/CSS":77,"EIM":18,"HBC":15},
+        "2022-2023": {"STEM":35,"ABM":78,"GAS":127,"HUMSS":0,"ICT/CSS":120,"EIM":43,"HBC":26},
+        "2023-2024": {"STEM":64,"ABM":46,"GAS":0,"HUMSS":89,"ICT/CSS":108,"EIM":54,"HBC":19},
+        "2024-2025": {"STEM":71,"ABM":56,"GAS":0,"HUMSS":103,"ICT/CSS":69,"EIM":33,"HBC":14},
+        "2025-2026": {"STEM":69,"ABM":42,"GAS":0,"HUMSS":102,"ICT/CSS":65,"EIM":31,"HBC":14}
+    };
+    
+    // SHS Strands Grade 12
+    const defaultGrade12Strands = {
+        "2021-2022": {"STEM":53,"ABM":50,"GAS":81,"HUMSS":0,"ICT/CSS":67,"EIM":35,"HBC":15},
+        "2022-2023": {"STEM":56,"ABM":48,"GAS":134,"HUMSS":0,"ICT/CSS":44,"EIM":24,"HBC":9},
+        "2023-2024": {"STEM":38,"ABM":80,"GAS":122,"HUMSS":0,"ICT/CSS":112,"EIM":65,"HBC":25},
+        "2024-2025": {"STEM":64,"ABM":45,"GAS":0,"HUMSS":97,"ICT/CSS":65,"EIM":48,"HBC":11},
+        "2025-2026": {"STEM":70,"ABM":52,"GAS":0,"HUMSS":103,"ICT/CSS":67,"EIM":33,"HBC":14}
+    };
+    
+    // Initialize data
+    for(let yr of schoolYears) {
+        enrolleesData[yr] = defaultEnrol[yr];
+        dropoutsData[yr] = defaultDropouts[yr];
+        repeatersData[yr] = defaultRepeaters[yr];
+        classroomsData[yr] = defaultClassrooms[yr];
+        seatsData[yr] = defaultSeats[yr];
+    }
+    shsStrandsGrade11Data = defaultGrade11Strands;
+    shsStrandsGrade12Data = defaultGrade12Strands;
+    
+    let currentUser = { email: '', role: 'viewer', name: '' };
+    let currentView = "dashboard";
+    let activeDashboardYear = "2025-2026";
+    let currentDashboardChart = null;
+    let currentTrendChartGlobal = null;
+    
+    // ============ INITIALIZATION ============
+    document.addEventListener('DOMContentLoaded', () => {
+        setupLoginForm();
+        setupThemeToggle();
+        setupClockUpdate();
+        setupNavigationHandlers();
+        setupLogoutHandlers();
+        setupExportHandlers();
+        
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        setTheme(savedTheme);
+    });
+
+    // ============ LOGIN LOGIC ============
+    function setupLoginForm() {
+        const loginForm = document.getElementById('loginForm');
+        const emailInput = document.getElementById('emailInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const loginError = document.getElementById('loginError');
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+            
+            loginError.classList.remove('show');
+            loginError.textContent = '';
+            
+            if (!email || !password) {
+                loginError.textContent = 'Please enter email and password';
+                loginError.classList.add('show');
+                return;
+            }
+            
+            const account = VALID_ACCOUNTS[email];
+            if (!account || account.password !== password) {
+                loginError.textContent = 'Invalid email or password';
+                loginError.classList.add('show');
+                return;
+            }
+            
+            // Login successful
+            currentUser = { email, role: account.role, name: account.name };
+            
+            // Update UI
+            document.getElementById('profileName').textContent = currentUser.name;
+            document.getElementById('profileRole').textContent = currentUser.role.toUpperCase();
+            
+            // Hide login, show dashboard
+            document.getElementById('loginPageWrap').classList.add('hidden');
+            document.getElementById('appWrapper').style.display = 'flex';
+            
+            // Load dashboard
+            renderView('dashboard');
+        });
+    }
+
+    // ============ THEME ============
+    function setTheme(theme) {
+        if (theme === 'light') {
+            document.body.classList.add('light-theme');
+            document.body.classList.remove('dark-theme');
+            localStorage.setItem('theme', 'light');
+        } else {
+            document.body.classList.remove('light-theme');
+            document.body.classList.add('dark-theme');
+            localStorage.setItem('theme', 'dark');
+        }
+        document.querySelectorAll('#themeToggleLabel').forEach(el => el.textContent = theme === 'light' ? 'Light' : 'Dark');
+    }
+
+    function setupThemeToggle() {
+        document.getElementById('loginThemeToggle').addEventListener('click', () => {
+            const currentTheme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
+            setTheme(currentTheme === 'light' ? 'dark' : 'light');
+        });
+
+        document.getElementById('dashboardThemeToggle').addEventListener('click', () => {
+            const currentTheme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
+            setTheme(currentTheme === 'light' ? 'dark' : 'light');
+        });
+    }
+
+    // ============ CLOCK ============
+    function tickClock() {
+        const now = new Date();
+        document.getElementById('headerDate').textContent = now.toLocaleDateString('en-PH', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('headerClock').textContent = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function setupClockUpdate() {
+        tickClock();
+        setInterval(tickClock, 1000);
+    }
+
+    // ============ NAVIGATION ============
+    function setupNavigationHandlers() {
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const view = item.getAttribute('data-view');
+                switchView(view);
+            });
+        });
+    }
+
+    function switchView(view) {
+        currentView = view;
+        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+        document.querySelector(`[data-view="${view}"]`).classList.add('active');
+        
+        const titles = {
+            'dashboard': 'Dashboard',
+            'enrollment': 'Enrollment',
+            'dropouts': 'Dropouts',
+            'repeaters': 'Repeaters',
+            'classrooms': 'Classrooms',
+            'seats': 'Seats',
+            'teachers': 'Teachers',
+            'shsstrands': 'SHS Strands',
+            'reports': 'Reports',
+            'analytics': 'Analytics',
+            'logs': 'Activity Logs',
+            'dataAdmin': 'Data Administration'
+        };
+        
+        document.getElementById('currentPageTitle').textContent = titles[view] || 'Dashboard';
+        renderView(view);
+    }
+
+    // ============ LOGOUT ============
+    function setupLogoutHandlers() {
+        document.getElementById('logoutTopBtn').addEventListener('click', logout);
+        document.getElementById('logoutSidebarBtn').addEventListener('click', logout);
+    }
+
+    function logout() {
+        currentUser = { email: '', role: 'viewer', name: '' };
+        document.getElementById('appWrapper').style.display = 'none';
+        document.getElementById('loginPageWrap').classList.remove('hidden');
+        document.getElementById('loginForm').reset();
+        document.getElementById('loginError').classList.remove('show');
+    }
+
+    // ============ MOBILE MENU ============
+    function setupMobileMenu() {
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('show');
+        });
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('show');
+                }
+            });
+        });
+    }
+
+    // ============ HELPERS ============
+    function getYearTotals(year) {
+        const totalEnrol = enrolleesData[year]?.reduce((a,b)=>a+b,0) || 0;
+        const totalDrop = dropoutsData[year]?.reduce((a,b)=>a+b,0) || 0;
+        const totalRep = repeatersData[year]?.reduce((a,b)=>a+b,0) || 0;
+        return { totalEnrol, totalDrop, totalRep };
+    }
+
+    // ============ EXPORT ============
+    function setupExportHandlers() {
+        document.getElementById('btnPrint').addEventListener('click', () => {
+            window.print();
+        });
+
+        document.getElementById('btnExportJson').addEventListener('click', () => {
+            const data = {
+                exportDate: new Date().toISOString(),
+                school: 'Diosdado Macapagal Memorial Highschool',
+                enrollees: enrolleesData,
+                dropouts: dropoutsData,
+                repeaters: repeatersData,
+                classrooms: classroomsData,
+                seats: seatsData,
+                teachersJHS: defaultTeachersJHS,
+                teachersSHS: defaultTeachersSHS,
+                grade11Strands: shsStrandsGrade11Data,
+                grade12Strands: shsStrandsGrade12Data
+            };
+            const json = JSON.stringify(data, null, 2);
+            downloadFile(json, 'school-data.json', 'application/json');
+        });
+
+        document.getElementById('btnExportExcel').addEventListener('click', () => {
+            const wb = XLSX.utils.book_new();
+            
+            // Enrollment sheet
+            const wsEnrol = XLSX.utils.aoa_to_sheet([
+                ['Grade', ...schoolYears],
+                ...grades.map((g, i) => [g, ...schoolYears.map(yr => enrolleesData[yr][i])])
+            ]);
+            XLSX.utils.book_append_sheet(wb, wsEnrol, 'Enrollment');
+            
+            XLSX.writeFile(wb, 'school-data.xlsx');
+        });
+    }
+
+    function downloadFile(content, filename, type) {
+        const blob = new Blob([content], { type });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // ============ RENDERING ============
+    function renderDashboard(container) {
+        const year = activeDashboardYear;
+        const totals = getYearTotals(year);
+        const retention = totals.totalEnrol ? ((1 - totals.totalDrop / totals.totalEnrol) * 100).toFixed(1) : '0';
+        
+        container.innerHTML = `
+            <div class="info-card">
+                <h3>Complete Dashboard Overview</h3>
+                <p>School Performance Monitoring for <strong>Diosdado Macapagal Memorial Highschool</strong></p>
+            </div>
+            <div class="global-slicer">
+                <label><i class="fas fa-filter"></i> School Year: </label>
+                <select id="sySelector" class="year-selector">${schoolYears.map(yr => `<option value="${yr}" ${yr === year ? 'selected' : ''}>${yr}</option>`).join('')}</select>
+            </div>
+            <div class="stat-grid">
+                <div class="info-card kpi-card kpi-blue"><h4>📚 TOTAL ENROLLEES</h4><div class="value" id="enrolValue">${totals.totalEnrol.toLocaleString()}</div></div>
+                <div class="info-card kpi-card kpi-drop"><h4>⚠️ DROPOUTS</h4><div class="value" id="dropValue">${totals.totalDrop.toLocaleString()}</div></div>
+                <div class="info-card kpi-card kpi-rep"><h4>🔄 REPEATERS</h4><div class="value" id="repValue">${totals.totalRep.toLocaleString()}</div></div>
+            </div>
+            <div class="info-card"><h4>Enrollees by Grade · ${year}</h4><canvas id="gradeChart"></canvas></div>
+            <div class="info-card"><h4>Historical Enrollment Trend</h4><canvas id="trendChart"></canvas></div>
+            <div class="info-card"><h4>Executive Insights · ${year}</h4>
+                <div>Retention rate: <strong>${retention}%</strong></div>
+                <div>Total dropouts: <strong>${totals.totalDrop}</strong></div>
+                <div>Total repeaters: <strong>${totals.totalRep}</strong></div>
+            </div>
+        `;
+        
+        const gradeData = enrolleesData[year];
+        const ctxBar = document.getElementById("gradeChart").getContext("2d");
+        if (currentDashboardChart) currentDashboardChart.destroy();
+        currentDashboardChart = new Chart(ctxBar, {
+            type: 'bar',
+            data: { labels: grades, datasets: [{ label: `Enrollees (${year})`, data: gradeData, backgroundColor: '#3b82f6' }] },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+        
+        const totalsPerYear = schoolYears.map(yr => enrolleesData[yr]?.reduce((a,b)=>a+b,0) || 0);
+        const ctxTrend = document.getElementById("trendChart").getContext("2d");
+        if (currentTrendChartGlobal) currentTrendChartGlobal.destroy();
+        currentTrendChartGlobal = new Chart(ctxTrend, {
+            type: 'line',
+            data: { labels: schoolYears, datasets: [{ label: 'Total Enrollees', data: totalsPerYear, borderColor: '#3b82f6', fill: true }] },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+        
+        document.getElementById("sySelector").onchange = (e) => {
+            activeDashboardYear = e.target.value;
+            renderDashboard(container);
+        };
+    }
+    
+    function renderEnrollment(container) {
+        let html = `<div class="info-card"><h4>📚 Enrollees (BOSY) by Grade</h4><div class="table-scroll"><table class="data-table"><thead><tr><th>Grade</th>${schoolYears.map(yr=>`<th>${yr}</th>`).join('')}</tr></thead><tbody>`;
+        for(let g=0; g<grades.length; g++) {
+            html += `<tr><td><b>${grades[g]}</b></td>`;
+            for(let yr of schoolYears) html += `<td>${enrolleesData[yr]?.[g] || 0}</td>`;
+            html += `</tr>`;
+        }
+        html += `</tbody></table></div></div>`;
+        container.innerHTML = html;
+    }
+    
+    function renderDropouts(container) {
+        let html = `<div class="info-card"><h4>⚠️ Dropouts by Grade</h4><div class="table-scroll"><table class="data-table"><thead><tr><th>Grade</th>${schoolYears.map(yr=>`<th>${yr}</th>`).join('')}</tr></thead><tbody>`;
+        for(let g=0; g<grades.length; g++) {
+            html += `<tr><td><b>${grades[g]}</b></td>`;
+            for(let yr of schoolYears) html += `<td>${dropoutsData[yr]?.[g] || 0}</td>`;
+            html += `</tr>`;
+        }
+        html += `</tbody></table></div></div>`;
+        container.innerHTML = html;
+    }
+    
+    function renderRepeaters(container) {
+        let html = `<div class="info-card"><h4>🔄 Repeaters by Grade</h4><div class="table-scroll"><table class="data-table"><thead><tr><th>Grade</th>${schoolYears.map(yr=>`<th>${yr}</th>`).join('')}</tr></thead><tbody>`;
+        for(let g=0; g<grades.length; g++) {
+            html += `<tr><td><b>${grades[g]}</b></td>`;
+            for(let yr of schoolYears) html += `<td>${repeatersData[yr]?.[g] || 0}</td>`;
+            html += `</tr>`;
+        }
+        html += `</tbody></table></div></div>`;
+        container.innerHTML = html;
+    }
+
+    function renderClassrooms(container) {
+        let html = `<div class="info-card"><h4>🚪 Classrooms by Grade</h4><div class="table-scroll"><table class="data-table"><thead><tr><th>Grade</th>${schoolYears.map(yr=>`<th>${yr}</th>`).join('')}</tr></thead><tbody>`;
+        for(let g=0; g<grades.length; g++) {
+            html += `<tr><td><b>${grades[g]}</b></td>`;
+            for(let yr of schoolYears) html += `<td>${classroomsData[yr]?.[g] || 0}</td>`;
+            html += `</tr>`;
+        }
+        html += `</tbody></table></div></div>`;
+        container.innerHTML = html;
+    }
+
+    function renderSeats(container) {
+        let html = `<div class="info-card"><h4>🪑 Total Seats by Grade</h4><div class="table-scroll"><table class="data-table"><thead><tr><th>Grade</th>${schoolYears.map(yr=>`<th>${yr}</th>`).join('')}</tr></thead><tbody>`;
+        for(let g=0; g<grades.length; g++) {
+            html += `<tr><td><b>${grades[g]}</b></td>`;
+            for(let yr of schoolYears) html += `<td>${seatsData[yr]?.[g] || 0}</td>`;
+            html += `</tr>`;
+        }
+        html += `</tbody></table></div></div>`;
+        container.innerHTML = html;
+    }
+
+    function renderTeachers(container) {
+        let htmlJHS = `<div class="info-card"><h4>👨‍🏫 JHS Teachers by Learning Area</h4><div class="table-scroll"><table class="data-table"><thead><tr><th>Learning Area</th>${schoolYears.map(yr=>`<th>${yr}</th>`).join('')}</tr></thead><tbody>`;
+        for(let area in defaultTeachersJHS) {
+            htmlJHS += `<tr><td><b>${area}</b></td>`;
+            for(let yr of schoolYears) htmlJHS += `<td>${defaultTeachersJHS[area][yr]}</td>`;
+            htmlJHS += `</tr>`;
+        }
+        htmlJHS += `</tbody></table></div></div>`;
+
+        let htmlSHS = `<div class="info-card"><h4>👨‍🏫 SHS Teachers by Track</h4><div class="table-scroll"><table class="data-table"><thead><tr><th>Track</th>${schoolYears.map(yr=>`<th>${yr}</th>`).join('')}</tr></thead><tbody>`;
+        for(let track in defaultTeachersSHS) {
+            htmlSHS += `<tr><td><b>${track}</b></td>`;
+            for(let yr of schoolYears) htmlSHS += `<td>${defaultTeachersSHS[track][yr]}</td>`;
+            htmlSHS += `</tr>`;
+        }
+        htmlSHS += `</tbody></table></div></div>`;
+        
+        container.innerHTML = htmlJHS + htmlSHS;
+    }
+
+    function renderSHSStrands(container) {
+        let htmlG11 = `<div class="info-card"><h4>🎓 Grade 11 - SHS Strands</h4><div class="table-scroll"><table class="data-table"><thead><tr><th>Strand</th>${schoolYears.map(yr=>`<th>${yr}</th>`).join('')}</tr></thead><tbody>`;
+        const strandsG11 = ["STEM","ABM","GAS","HUMSS","ICT/CSS","EIM","HBC"];
+        for(let strand of strandsG11) {
+            htmlG11 += `<tr><td><b>${strand}</b></td>`;
+            for(let yr of schoolYears) htmlG11 += `<td>${shsStrandsGrade11Data[yr]?.[strand] || 0}</td>`;
+            htmlG11 += `</tr>`;
+        }
+        htmlG11 += `</tbody></table></div></div>`;
+
+        let htmlG12 = `<div class="info-card"><h4>🎓 Grade 12 - SHS Strands</h4><div class="table-scroll"><table class="data-table"><thead><tr><th>Strand</th>${schoolYears.map(yr=>`<th>${yr}</th>`).join('')}</tr></thead><tbody>`;
+        for(let strand of strandsG11) {
+            htmlG12 += `<tr><td><b>${strand}</b></td>`;
+            for(let yr of schoolYears) htmlG12 += `<td>${shsStrandsGrade12Data[yr]?.[strand] || 0}</td>`;
+            htmlG12 += `</tr>`;
+        }
+        htmlG12 += `</tbody></table></div></div>`;
+        
+        container.innerHTML = htmlG11 + htmlG12;
+    }
+    
+    function renderView(view) {
+        const container = document.getElementById("dynamicView");
+        container.classList.add('view-enter');
+        
+        if (view === "dashboard") renderDashboard(container);
+        else if (view === "enrollment") renderEnrollment(container);
+        else if (view === "dropouts") renderDropouts(container);
+        else if (view === "repeaters") renderRepeaters(container);
+        else if (view === "classrooms") renderClassrooms(container);
+        else if (view === "seats") renderSeats(container);
+        else if (view === "teachers") renderTeachers(container);
+        else if (view === "shsstrands") renderSHSStrands(container);
+        else if (view === "reports") container.innerHTML = '<div class="info-card"><h4>📊 Performance Reports</h4><p>Comprehensive reports module coming soon.</p></div>';
+        else if (view === "analytics") container.innerHTML = '<div class="info-card"><h4>📈 Analytics</h4><p>Advanced analytics and visualization tools coming soon.</p></div>';
+        else if (view === "logs") container.innerHTML = '<div class="info-card"><h4>📜 Activity Logs</h4><p>User activity and audit logs coming soon.</p></div>';
+        else if (view === "dataAdmin") container.innerHTML = '<div class="info-card"><h4>🗄️ Data Administration</h4><p>Data management and administration tools coming soon.</p></div>';
+    }
+</script>
+
+</body>
+</html>
